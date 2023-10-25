@@ -26,20 +26,34 @@ states = {"#": {"hello": 5, "good": 4},
     
 # Write your implementation here...
 
-def generate_sentence(states):
-        """Generates a random sentence based on the given states."""
-        sentence = []
-        current_word = "#"
-        while True:
-                if not states[current_word]:
-                        break
-                next_word = rand.choices(list(states[current_word].keys()), list(states[current_word].values()))[0]
-                if next_word == "":
-                        break
-                sentence.append(next_word)
-                current_word = next_word
-        return " ".join(sentence) 
+
+def word_states(sentences: list[str]) -> dict[ dict[str, int] ]:
+    """
+    Returns a dict of dicts representing the states of each word 
+    and their frequencies.
+    """
+
+    states = {}
+
+    for sentence in sentences:
+        words = sentence.split()
+        previous_word = "#"
+
+        for word in words:
+                if previous_word not in states:
+                    states[previous_word] = {}
+
+                if word not in states[previous_word]:
+                    states[previous_word][word] = 1
+                else:
+                    states[previous_word][word] += 1
+
+                previous_word = word
+
+        if previous_word not in states:
+            states[previous_word] = {}
+
+    return states
 
 
-# Test your code here...
-print(generate_sentence(states))
+
