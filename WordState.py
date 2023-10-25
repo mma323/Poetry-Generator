@@ -10,8 +10,10 @@ class WordState:
         
 
     def add_next_word(self, next_word):
-        """Introduces a new next word to the current word.
-        If the word already exists in the dict, its count is incremented."""
+        """
+        Introduces a new next word to the current word.
+        If the word already exists in the dict, its count is incremented.
+        """
 
         if next_word in self._next_words:
             self._next_words[next_word] += 1
