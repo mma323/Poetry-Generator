@@ -56,4 +56,64 @@ def word_states(sentences: list[str]) -> dict[ dict[str, int] ]:
     return states
 
 
+def generate_sentences(sentences, num_sentences):
+        # Create a dictionary to store the frequency of each word and its next words
+        states = {"#": WordState()}
 
+        # Loop through each sentence
+        for sentence in sentences:
+                words = sentence.split()
+                previous_word = "#"
+
+                # Loop through each word in the sentence
+                for word in words:
+                        # If the previous word is not in the dictionary, add it
+                        if previous_word not in states:
+                                states[previous_word] = WordState()
+
+                        # Add the current word to the WordState object for the previous word
+                        states[previous_word].add_next_word(word)
+
+                        previous_word = word
+
+                # Add the last word in the sentence to the dictionary
+                if previous_word not in states:
+                        states[previous_word] = WordState()
+
+        # Generate the specified number of sentences
+        sentences = []
+        for i in range(num_sentences):
+                sentence = []
+                current_word = "#"
+                while True:
+                        sentence.append(current_word)
+                        if not states[current_word].has_next():
+                                break
+                        current_word = states[current_word].get_next()
+                sentences.append(" ".join(sentence[1:]))
+
+        return sentences
+
+
+input_sentences = [
+    "hello there friend",
+        "hello there good friend",        
+        "hello peter my good friend",
+        "hello there my good friend",
+        "hello my friend",
+        "hello my good brown friend",
+        "good day friend",
+        "good morning friend",
+        "good morning to you my friend",
+    "The quick brown fox jumps over the lazy dog".lower(),
+    "She sells seashells by the seashore".lower(),
+    "Peter Piper picked a peck of pickled peppers".lower(),
+    "How much wood would a woodchuck chuck if a woodchuck could chuck wood".lower()
+]
+
+num_sentences = 15
+
+generated_sentences = generate_sentences(input_sentences, num_sentences)
+
+for sentence in generated_sentences:
+    print(sentence)
