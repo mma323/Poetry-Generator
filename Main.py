@@ -1,4 +1,5 @@
 import random as rand
+import pandas as pd
 from WordState import WordState # Use as needed.
     
 # Some sentences to test your code on...
@@ -27,7 +28,7 @@ states = {"#": {"hello": 5, "good": 4},
 # Write your implementation here...
 
 
-def word_states(sentences: list[str]) -> dict[ dict[str, int] ]:
+def word_states(sentences: list) -> dict:
     """
     Returns a dict of dicts representing the states of each word 
     and their frequencies.
@@ -56,6 +57,7 @@ def word_states(sentences: list[str]) -> dict[ dict[str, int] ]:
     return states
 
 
+#consider breaking up into smaller functions
 def generate_sentences(sentences, num_sentences):
     states = {"#": WordState()}
 
@@ -71,11 +73,12 @@ def generate_sentences(sentences, num_sentences):
 
             previous_word = word
 
+        #last word is not followed by anything
         if previous_word not in states:
             states[previous_word] = WordState()
 
     sentences = []
-    
+
     for i in range(num_sentences):
         sentence = []
         current_word = "#"
@@ -89,9 +92,150 @@ def generate_sentences(sentences, num_sentences):
     return sentences
 
 
-num_sentences = 15
+def preprocess_text(
+        data: pd.DataFrame, text_column: str,
+        lower_casing               : bool = False, 
+        remove_punctuations        : bool = False,
+        remove_stopwords           : bool = False, 
+        frequent_words_to_remove   : int  = 0,
+        rare_words_to_remove       : int  = 0,
+        remove_emojis              : bool = True,
+        remove_emoticons           : bool = True,
+        convert_emoticons_to_words : bool = False,
+        remove_urls                : bool = True
+):
+    text = data[text_column].copy()
 
-generated_sentences = generate_sentences(test_sentences, num_sentences)
+    if lower_casing:
+        text = text.str.lower()
+    
+    if remove_punctuations:
+        import string
+        text = text.apply(
+            lambda x: x.translate(str.maketrans('', '', string.punctuation))
+        )
 
-for sentence in generated_sentences:
-    print(sentence)
+    if remove_stopwords:
+        import nltk
+        nltk.download('stopwords')
+        from nltk.corpus import stopwords
+        #Test later if this is necessary
+        ", ".join(stopwords.words('english'))
+
+        STOPWORDS = set(stopwords.words('english'))
+        text = text.apply(
+            lambda x: " ".join(
+                [word for word in x.split() if word not in STOPWORDS]
+            )
+        )
+
+    from collections import Counter
+
+    if frequent_words_to_remove > 0:
+        counter = Counter()
+        for text in text.values:
+            for word in text.split():
+                counter[word] += 1
+        
+        FREQUENT_WORDS = set(
+            [
+                word for (word, count) 
+                in counter.most_common(frequent_words_to_remove)
+            ]
+        )
+
+        text = text.apply(
+            lambda x: " ".join(
+                [word for word in x.split() if word not in FREQUENT_WORDS]
+            )
+        )
+
+    if rare_words_to_remove > 0:
+        counter = Counter()
+        for text in text.values:
+            for word in text.split():
+                counter[word] += 1
+        
+        RARE_WORDS = set(
+            [
+                word for (word, count) 
+                in counter.most_common()[:-rare_words_to_remove-1:-1]
+            ]
+        )
+
+        text = text.apply(
+            lambda x: " ".join(
+                [word for word in x.split() if word not in RARE_WORDS]
+            )
+        )
+
+
+    import re
+    
+    if remove_emojis:
+        emoji_pattern = re.compile("["
+                        u"\U0001F600-\U0001F64F"  # emoticons
+                        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                        u"\U00002702-\U000027B0"
+                        u"\U000024C2-\U0001F251"
+                        "]+", flags=re.UNICODE)
+        
+        text = text.apply(lambda x: emoji_pattern.sub(r'', x))
+
+    EMOTICONS = {
+        u":‑\)":"Happy face or smiley",
+        u":\)":"Happy face or smiley",
+        u":-\]":"Happy face or smiley",
+        u":\]":"Happy face or smiley",
+        u":-3":"Happy face smiley",
+        u":3":"Happy face smiley",
+        u":->":"Happy face smiley",
+        u":>":"Happy face smiley",
+        u"8-\)":"Happy face smiley",
+        u":o\)":"Happy face smiley",
+        u":-\}":"Happy face smiley",
+        u":\}":"Happy face smiley",
+        u":-\)":"Happy face smiley",
+        u":c\)":"Happy face smiley",
+        u":\^\)":"Happy face smiley",
+        u"=\]":"Happy face smiley",
+        u"=\)":"Happy face smiley"
+    }
+    
+    if remove_emoticons:
+        emoticon_pattern = re.compile(
+            u'(' + u'|'.join(k for k in EMOTICONS) + u')'
+        )
+        text = text.apply(
+            lambda x: emoticon_pattern.sub(r'', x)
+        )
+
+    if convert_emoticons_to_words:
+        for emoticon in EMOTICONS:
+            text = re.sub(
+                u'('+emoticon+')',
+                "_".join(EMOTICONS[emoticon].replace(",","").split()),
+                text
+            )
+    
+    if remove_urls:
+        url_pattern = re.compile(r'https?://\S+|www\.\S+')
+        text = text.apply(
+            lambda x: url_pattern.sub(r'', x)
+        )
+    
+    return text
+
+
+def main():
+    #Test preprocess_text
+    data = pd.read_csv("PoetryFoundationData.csv")
+    data = preprocess_text(data, "Poem")
+    poem = generate_sentences(data, 1)
+    print(poem)
+
+
+if __name__ == "__main__":
+    main()
