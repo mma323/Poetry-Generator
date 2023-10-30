@@ -268,14 +268,18 @@ def generate_poems(csv, column, amount_of_poems):
         print("##############################################################")
         print(poem)
         print("##############################################################")
+    
+    return poems
 
 
 def save_generated_text(text, filename):
     print("Saving generated text to file: " + filename)
-    with open(filename, "w") as file:
-        file.write(text)
+    with open(filename, "w", encoding="utf8") as file:
+        for line in text:
+            file.write(line + "\n")
     print("Text saved to file: " + filename + "\n")
     
+
 def main():
     poem_data = "PoetryFoundationData.csv"
     poem_column = "Poem"
@@ -284,18 +288,23 @@ def main():
     print("--- Poem Generator ---")
 
     while keep_running:
-        try:
-            poems_to_generate = int(
-                input("How many poems would you like to generate? 0 to quit")
-            )
+        print("Press 1 to generate poems. 0 to exit.")
+        print()
+        user_input = input("Enter your choice: ")
 
-            if poems_to_generate == 0:
-                keep_running = False
-            else:
-                generate_poems(poem_data, poem_column, poems_to_generate)
-        except ValueError:
-            print("Please enter a valid number of poems to generate")
-
+        if user_input == "1":
+            number_of_poems = int( input("Number of poems to generate: ") )
+            poems = generate_poems(poem_data, poem_column, number_of_poems)
+            save_poems = input("Save poems to file? (y/n): ")
+            if save_poems == "y":
+                try:
+                    file_name = input("Enter file name: ")
+                    save_generated_text(poems, file_name)
+                except:
+                    print("Error saving poems to file. (check file name)")
+            elif save_poems == "n":
+                pass
+        
 
 if __name__ == "__main__":
     main()
