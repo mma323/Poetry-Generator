@@ -133,8 +133,8 @@ def preprocess_text(
 
     if frequent_words_to_remove > 0:
         counter = Counter()
-        for text in text.values:
-            for word in text.split():
+        for value in text.values:
+            for word in value.split():
                 counter[word] += 1
         
         FREQUENT_WORDS = set(
@@ -152,8 +152,8 @@ def preprocess_text(
 
     if rare_words_to_remove > 0:
         counter = Counter()
-        for text in text.values:
-            for word in text.split():
+        for value in text.values:
+            for word in value.split():
                 counter[word] += 1
         
         RARE_WORDS = set(
@@ -168,7 +168,6 @@ def preprocess_text(
                 [word for word in x.split() if word not in RARE_WORDS]
             )
         )
-
 
     import re
     
@@ -229,12 +228,37 @@ def preprocess_text(
     return text
 
 
+def sentences_from_poems(poems : pd.DataFrame) -> list:
+    """
+    Returns a list of sentences from the poems.
+    """
+    sentences = []
+
+    for poem in poems:
+        sentences.append(poem.split("\n"))
+    
+    #list of lists to list of strings
+    sentences = [sentence for poem in sentences for sentence in poem]
+
+    return sentences
+
+
 def main():
     #Test preprocess_text
     data = pd.read_csv("PoetryFoundationData.csv")
     data = preprocess_text(data, "Poem")
+    data = sentences_from_poems(data)
+    #print(data[2])
     poem = generate_sentences(data, 1)
-    print(poem)
+    #poem is a list containing a string, print the string
+    #New line for every . or , or ? or !
+    poem[0] = poem[0].replace(".", ".\n")
+    poem[0] = poem[0].replace(",", ",\n")
+    poem[0] = poem[0].replace("?", "?\n")
+    poem[0] = poem[0].replace("!", "!\n")
+    #new line for words starting with capital letter
+    poem[0] = poem[0].replace(" ", "\n", 1)
+    print(poem[0])
 
 
 if __name__ == "__main__":
