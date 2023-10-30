@@ -243,22 +243,58 @@ def sentences_from_poems(poems : pd.DataFrame) -> list:
     return sentences
 
 
-def main():
-    #Test preprocess_text
-    data = pd.read_csv("PoetryFoundationData.csv")
-    data = preprocess_text(data, "Poem")
+def process_output_poems(poems : list) -> list:
+    new_poems = []
+    for poem in poems:
+        poem = poem.replace(".", ".\n")
+        poem = poem.replace(",", ",\n")
+        poem = poem.replace("?", "?\n")
+        poem = poem.replace("!", "!\n")
+        #new line for words starting with capital letter
+        poem = poem.replace(" ", "\n", 1)
+        new_poems.append(poem)
+    
+    return new_poems
+
+
+def generate_poems(csv, column, amount_of_poems):
+    data = pd.read_csv(csv)
+    data = preprocess_text(data, column)
     data = sentences_from_poems(data)
-    #print(data[2])
-    poem = generate_sentences(data, 1)
-    #poem is a list containing a string, print the string
-    #New line for every . or , or ? or !
-    poem[0] = poem[0].replace(".", ".\n")
-    poem[0] = poem[0].replace(",", ",\n")
-    poem[0] = poem[0].replace("?", "?\n")
-    poem[0] = poem[0].replace("!", "!\n")
-    #new line for words starting with capital letter
-    poem[0] = poem[0].replace(" ", "\n", 1)
-    print(poem[0])
+    poems = generate_sentences(data, amount_of_poems)
+    poems = process_output_poems(poems)
+
+    for poem in poems:
+        print("##############################################################")
+        print(poem)
+        print("##############################################################")
+
+
+def save_generated_text(text, filename):
+    print("Saving generated text to file: " + filename)
+    with open(filename, "w") as file:
+        file.write(text)
+    print("Text saved to file: " + filename + "\n")
+    
+def main():
+    poem_data = "PoetryFoundationData.csv"
+    poem_column = "Poem"
+
+    keep_running = True
+    print("--- Poem Generator ---")
+
+    while keep_running:
+        try:
+            poems_to_generate = int(
+                input("How many poems would you like to generate? 0 to quit")
+            )
+
+            if poems_to_generate == 0:
+                keep_running = False
+            else:
+                generate_poems(poem_data, poem_column, poems_to_generate)
+        except ValueError:
+            print("Please enter a valid number of poems to generate")
 
 
 if __name__ == "__main__":
