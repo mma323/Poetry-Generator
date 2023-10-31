@@ -1,32 +1,21 @@
 import random as rand
 import pandas as pd
-from WordState import WordState # Use as needed.
+from WordState import WordState
+import os
     
-# Some sentences to test your code on...
-test_sentences = ["hello there friend",
-                  "hello there good friend",
-                  "hello there my good friend",
-                  "hello my friend",
-                  "hello my good friend",
-                  "good day friend",
-                  "good morning friend",
-                  "good morning to you my friend",
-                  "good morning to you my good friend"]
-    
-# A simple "pre-trained model"/graph derived from above sentences with words and corresponding frequencies.
-states = {"#": {"hello": 5, "good": 4},
-        "hello": {"there": 3, "my": 2},
-        "good": {"friend": 4, "day": 1, "morning": 3},
-        "there": {"friend": 1, "good": 1, "my": 1},
-        "my": {"good": 2, "friend": 2},
-        "friend": {},
-        "day": {"friend": 1},
-        "morning": {"friend": 1, "to": 2},
-        "to": {"you": 2},
-        "you": {"my": 1}}
-    
-# Write your implementation here...
 
+def read_and_parse_text(file: str, column = None) -> str:
+
+    if column is None:
+        text = pd.read_csv(file, header=None)
+        text = text[0]
+        return text
+    else:
+        text = pd.read_csv(file)
+        text = text[column]
+
+    return text
+   
 
 def word_states(sentences: list) -> dict:
     """
@@ -58,10 +47,10 @@ def word_states(sentences: list) -> dict:
 
 
 #consider breaking up into smaller functions
-def generate_sentences(sentences, num_sentences):
+def generate_sentences(sentences : list , num_sentences : int):
     states = {"#": WordState()}
-
     for sentence in sentences:
+        
         words = sentence.split()
         previous_word = "#"
 
@@ -93,18 +82,18 @@ def generate_sentences(sentences, num_sentences):
 
 
 def preprocess_text(
-        data: pd.DataFrame, text_column: str,
+        data: pd.DataFrame, 
         lower_casing               : bool = False, 
         remove_punctuations        : bool = False,
         remove_stopwords           : bool = False, 
         frequent_words_to_remove   : int  = 0,
         rare_words_to_remove       : int  = 0,
-        remove_emojis              : bool = True,
-        remove_emoticons           : bool = True,
+        remove_emojis              : bool = False,
+        remove_emoticons           : bool = False,
         convert_emoticons_to_words : bool = False,
-        remove_urls                : bool = True
+        remove_urls                : bool = False
 ):
-    text = data[text_column].copy()
+    text = data.copy()
 
     if lower_casing:
         text = text.str.lower()
@@ -224,7 +213,7 @@ def preprocess_text(
         text = text.apply(
             lambda x: url_pattern.sub(r'', x)
         )
-    
+
     return text
 
 
@@ -258,8 +247,8 @@ def process_output_poems(poems : list) -> list:
 
 
 def generate_poems(csv, column, amount_of_poems):
-    data = pd.read_csv(csv)
-    data = preprocess_text(data, column)
+    data = read_and_parse_text(csv, column)
+    data = preprocess_text(data)
     data = sentences_from_poems(data)
     poems = generate_sentences(data, amount_of_poems)
     poems = process_output_poems(poems)
@@ -272,39 +261,106 @@ def generate_poems(csv, column, amount_of_poems):
     return poems
 
 
-def save_generated_text(text, filename):
-    print("Saving generated text to file: " + filename)
-    with open(filename, "w", encoding="utf8") as file:
+def save_generated_text(text):
+    file = input("Enter file name: ")
+
+    while os.path.exists(file):
+        print("File already exists. Are you sure you want to overwrite it?")
+        overwrite = input("Enter choice (y/n): ")
+        if overwrite == "y":
+            break
+        elif overwrite == "n":
+            file = input("Enter new file name: ")
+        else:
+            print("Invalid input. Try again.")
+            overwrite = input("Enter choice (y/n): ")
+        
+    print("Saving generated text to file: " + file)
+    with open(file, "w", encoding="utf8") as file:
         for line in text:
             file.write(line + "\n")
-    print("Text saved to file: " + filename + "\n")
+    print("Text saved to file: " + file + "\n")
     
 
 def main():
-    poem_data = "PoetryFoundationData.csv"
-    poem_column = "Poem"
+    DEFAULT_DATA = "PoetryFoundationData.csv"
+    DEFAULT_COLUMN = "Poem"
+
+    data = DEFAULT_DATA
+    column = DEFAULT_COLUMN
 
     keep_running = True
-    print("--- Poem Generator ---")
-
     while keep_running:
-        print("Press 1 to generate poems. 0 to exit.")
-        print()
-        user_input = input("Enter your choice: ")
+        print("--- Poem Generator ---")
+        print("Current training data source: " + data + "\n")
 
-        if user_input == "1":
-            number_of_poems = int( input("Number of poems to generate: ") )
-            poems = generate_poems(poem_data, poem_column, number_of_poems)
-            save_poems = input("Save poems to file? (y/n): ")
-            if save_poems == "y":
-                try:
-                    file_name = input("Enter file name: ")
-                    save_generated_text(poems, file_name)
-                except:
-                    print("Error saving poems to file. (check file name)")
-            elif save_poems == "n":
-                pass
-        
+        if data == DEFAULT_DATA:
+            user_input = display_menu_for_default_data()
+            if user_input == "1":
+                generate_poems_for_default_data(data, column)
+            elif user_input == "2":
+                data = change_training_data_source()
+            elif user_input == "0":
+                keep_running = False
+        else:
+            user_input = display_menu_for_non_default_data()
+            if user_input == "1":
+                generate_sentences_for_non_default_data(data)
+            elif user_input == "2":
+                data = change_training_data_source()
+            elif user_input == "0":
+                keep_running = False
+
+
+def display_menu_for_default_data():
+    print(
+        f"Press 1 to generate poem(s) \n"
+        "Press 2 to change training data source.\n"
+        "Press 0 to exit. \n"
+    )
+    return input("Enter choice: ")
+
+
+def display_menu_for_non_default_data():
+    print(
+        f"Press 1 to generate sentences \n"
+        "Press 2 to change training data source.\n"
+        "Press 0 to exit. \n"
+    )
+    return input("Enter choice: ")
+
+
+def generate_poems_for_default_data(data, column):
+    number_of_poems = int( input("Number of poems to generate: ") )
+    poems = generate_poems(data, column, number_of_poems)
+    save_poems = input("Save poems to file? (y/n): ")
+    if save_poems == "y":
+        try:
+            save_generated_text(poems)
+        except:
+            print("Error saving poems to file. (check file name/format)")
+    elif save_poems == "n":
+        pass
+
+
+def generate_sentences_for_non_default_data(folder):
+    number_of_sentences = int(input("Number of sentences to generate: "))
+
+    sentences = []
+    for filename in os.listdir(folder):
+        with open(os.path.join(folder, filename), 'r') as file:
+            for line in file:
+                sentences.append(line.strip())
+    
+    generated_sentences = generate_sentences(sentences, number_of_sentences)
+
+    for sentence in generated_sentences:
+        print(sentence)
+
+    
+def change_training_data_source():
+    return input("Enter new training data source: ")
+
 
 if __name__ == "__main__":
     main()
