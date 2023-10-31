@@ -1,7 +1,13 @@
+import os
+import string
+import re
+import nltk
 import random as rand
 import pandas as pd
+from nltk.corpus import stopwords
+from collections import Counter
 from WordState import WordState
-import os
+
 
 DEFAULT_DATA = "PoetryFoundationData.csv"
 DEFAULT_COLUMN = "Poem"
@@ -36,14 +42,15 @@ def main():
             print("File not found. Try again.")
 
     
-def read_and_parse_text(file: str, column=None, category="Time") -> pd.DataFrame:
+def read_and_parse_text(file: str, column=None, category=None) -> pd.DataFrame:
     """
     Reads and parses text from a CSV file.
 
-    Args:
-    file (str): The path to the CSV file.
-    column (str): The name of the column to read from. If None, reads from the first column.
-    category (str): The category to filter by. If None, returns all rows.
+    Arguments:
+    file (string)    : The path to the CSV/text file.
+    column (string)  : The name of the column to read from. 
+                       If None, reads from the first column.
+    category (string): The category to filter by. If None, returns all rows.
 
     Returns:
     pd.DataFrame: The parsed text.
@@ -64,15 +71,22 @@ def read_and_parse_text(file: str, column=None, category="Time") -> pd.DataFrame
 
 def word_states(sentences: list) -> dict:
     """
-    Returns a dict of dicts representing the states of each word 
-    and their frequencies.
+    Arguments:
+    sentences (list): A list of sentences.
+
+    Returns:
+    dict: A dictionary of word states (dictionaries) describing
+    the probability of a word following another word.
+
     """
 
     states = {}
 
     for sentence in sentences:
         words = sentence.split()
-        previous_word = "#"
+
+        start_of_sentence = "#"
+        previous_word = start_of_sentence
 
         for word in words:
                 if previous_word not in states:
@@ -92,18 +106,25 @@ def word_states(sentences: list) -> dict:
 
 
 def generate_sentences(sentences : list , num_sentences : int):
+
+    """
+    Generates sentences based on the training data using the class WordState.
+
+    Arguments:
+    sentences (list): A list of sentences used as training data.
+    num_sentences (int): The number of sentences to generate.
+
+    Returns:
+    list: A list of generated sentences based on the training data.
+    """
     states = {"#": WordState()}
     for sentence in sentences:
-        
         words = sentence.split()
         previous_word = "#"
-
         for word in words:
             if previous_word not in states:
                 states[previous_word] = WordState()
-
             states[previous_word].add_next_word(word)
-
             previous_word = word
 
         #last word is not followed by anything
@@ -125,97 +146,80 @@ def generate_sentences(sentences : list , num_sentences : int):
     return sentences
 
 
-def preprocess_text(
-        data: pd.DataFrame, 
-        lower_casing               : bool = False, 
-        remove_punctuations        : bool = False,
-        remove_stopwords           : bool = False, 
-        frequent_words_to_remove   : int  = 0,
-        rare_words_to_remove       : int  = 0,
-        remove_emojis              : bool = False,
-        remove_emoticons           : bool = False,
-        convert_emoticons_to_words : bool = False,
-        remove_urls                : bool = False
-):
-    text = data.copy()
+def lower_case(text):
+    return text.str.lower()
 
-    if lower_casing:
-        text = text.str.lower()
-    
-    if remove_punctuations:
-        import string
-        text = text.apply(
-            lambda x: x.translate(str.maketrans('', '', string.punctuation))
+
+def remove_punctuations(text):
+    return text.apply(
+        lambda x: x.translate(str.maketrans('', '', string.punctuation))
+    )
+
+
+def remove_stopwords(text):
+    nltk.download('stopwords')
+    STOPWORDS = set(stopwords.words('english'))
+    return text.apply(
+        lambda x: " ".join(
+            [word for word in x.split() if word not in STOPWORDS]
         )
+    )
 
-    if remove_stopwords:
-        import nltk
-        nltk.download('stopwords')
-        from nltk.corpus import stopwords
-        #Test later if this is necessary
-        ", ".join(stopwords.words('english'))
 
-        STOPWORDS = set(stopwords.words('english'))
-        text = text.apply(
-            lambda x: " ".join(
-                [word for word in x.split() if word not in STOPWORDS]
-            )
+def remove_frequent_words(text, frequent_words_to_remove):
+    counter = Counter()
+    for value in text.values:
+        for word in value.split():
+            counter[word] += 1
+
+    FREQUENT_WORDS = set(
+        [
+            word for (word, count) 
+            in counter.most_common(frequent_words_to_remove)
+        ]
+    )
+
+    return text.apply(
+        lambda x: " ".join(
+            [word for word in x.split() if word not in FREQUENT_WORDS]
         )
+    )
 
-    from collections import Counter
 
-    if frequent_words_to_remove > 0:
-        counter = Counter()
-        for value in text.values:
-            for word in value.split():
-                counter[word] += 1
-        
-        FREQUENT_WORDS = set(
-            [
-                word for (word, count) 
-                in counter.most_common(frequent_words_to_remove)
-            ]
+def remove_rare_words(text, rare_words_to_remove):
+    counter = Counter()
+    for value in text.values:
+        for word in value.split():
+            counter[word] += 1
+
+    RARE_WORDS = set(
+        [
+            word for (word, count) 
+            in counter.most_common()[:-rare_words_to_remove-1:-1]
+        ]
+    )
+
+    return text.apply(
+        lambda x: " ".join(
+            [word for word in x.split() if word not in RARE_WORDS]
         )
+    )
 
-        text = text.apply(
-            lambda x: " ".join(
-                [word for word in x.split() if word not in FREQUENT_WORDS]
-            )
-        )
 
-    if rare_words_to_remove > 0:
-        counter = Counter()
-        for value in text.values:
-            for word in value.split():
-                counter[word] += 1
-        
-        RARE_WORDS = set(
-            [
-                word for (word, count) 
-                in counter.most_common()[:-rare_words_to_remove-1:-1]
-            ]
-        )
+def remove_emojis(text):
+    emoji_pattern = re.compile("["
+                    u"\U0001F600-\U0001F64F"  # emoticons
+                    u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                    u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                    u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                    u"\U00002702-\U000027B0"
+                    u"\U000024C2-\U0001F251"
+                    "]+", flags=re.UNICODE)
 
-        text = text.apply(
-            lambda x: " ".join(
-                [word for word in x.split() if word not in RARE_WORDS]
-            )
-        )
+    return text.apply(lambda x: emoji_pattern.sub(r'', x))
 
-    import re
-    
-    if remove_emojis:
-        emoji_pattern = re.compile("["
-                        u"\U0001F600-\U0001F64F"  # emoticons
-                        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                        u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                        u"\U00002702-\U000027B0"
-                        u"\U000024C2-\U0001F251"
-                        "]+", flags=re.UNICODE)
-        
-        text = text.apply(lambda x: emoji_pattern.sub(r'', x))
 
+def remove_emoticons(text):
     EMOTICONS = {
         u":‑\)":"Happy face or smiley",
         u":\)":"Happy face or smiley",
@@ -235,28 +239,90 @@ def preprocess_text(
         u"=\]":"Happy face smiley",
         u"=\)":"Happy face smiley"
     }
-    
-    if remove_emoticons:
-        emoticon_pattern = re.compile(
-            u'(' + u'|'.join(k for k in EMOTICONS) + u')'
-        )
-        text = text.apply(
-            lambda x: emoticon_pattern.sub(r'', x)
+
+    emoticon_pattern = re.compile(
+        u'(' + u'|'.join(k for k in EMOTICONS) + u')'
+    )
+
+    return text.apply(lambda x: emoticon_pattern.sub(r'', x))
+
+
+def convert_emoticons_to_words(text):
+    EMOTICONS = {
+        u":‑\)":"Happy face or smiley",
+        u":\)":"Happy face or smiley",
+        u":-\]":"Happy face or smiley",
+        u":\]":"Happy face or smiley",
+        u":-3":"Happy face smiley",
+        u":3":"Happy face smiley",
+        u":->":"Happy face smiley",
+        u":>":"Happy face smiley",
+        u"8-\)":"Happy face smiley",
+        u":o\)":"Happy face smiley",
+        u":-\}":"Happy face smiley",
+        u":\}":"Happy face smiley",
+        u":-\)":"Happy face smiley",
+        u":c\)":"Happy face smiley",
+        u":\^\)":"Happy face smiley",
+        u"=\]":"Happy face smiley",
+        u"=\)":"Happy face smiley"
+    }
+
+    for emoticon in EMOTICONS:
+        text = re.sub(
+            u'('+emoticon+')', 
+            "_".join(EMOTICONS[emoticon].replace(",","").split()), 
+            text
         )
 
-    if convert_emoticons_to_words:
-        for emoticon in EMOTICONS:
-            text = re.sub(
-                u'('+emoticon+')',
-                "_".join(EMOTICONS[emoticon].replace(",","").split()),
-                text
-            )
+    return text
+
+
+def remove_urls(text):
+    url_pattern = re.compile(r'https?://\S+|www\.\S+')
+    return text.apply(lambda x: url_pattern.sub(r'', x))
+
+
+def preprocess_text(
+        data: pd.DataFrame, 
+        lower_casing               : bool = True, 
+        remove_punctuations        : bool = False,
+        remove_stopwords           : bool = False, 
+        frequent_words_to_remove   : int  = 0,
+        rare_words_to_remove       : int  = 0,
+        remove_emojis              : bool = False,
+        remove_emoticons           : bool = False,
+        convert_emoticons_to_words : bool = False,
+        remove_urls                : bool = False
+):
+    text = data.copy()
+
+    if lower_casing:
+        text = lower_case(text)
     
+    if remove_punctuations:
+        text = remove_punctuations(text)
+
+    if remove_stopwords:
+        text = remove_stopwords(text)
+
+    if frequent_words_to_remove > 0:
+        text = remove_frequent_words(text, frequent_words_to_remove)
+
+    if rare_words_to_remove > 0:
+        text = remove_rare_words(text, rare_words_to_remove)
+
+    if remove_emojis:
+        text = remove_emojis(text)
+
+    if remove_emoticons:
+        text = remove_emoticons(text)
+
+    if convert_emoticons_to_words:
+        text = convert_emoticons_to_words(text)
+
     if remove_urls:
-        url_pattern = re.compile(r'https?://\S+|www\.\S+')
-        text = text.apply(
-            lambda x: url_pattern.sub(r'', x)
-        )
+        text = remove_urls(text)
 
     return text
 
@@ -295,15 +361,14 @@ def process_output_poems(
         poem = "\n".join(
             [line.lstrip() for line in poem.split("\n")]
         )
-
-        #remove lines containing more than 10 words
-        poem = "\n".join(
-            [line for line in poem.split("\n") if len(line.split()) < 10]
-        )
         
         #New line when capitalized word is found
         poem = "\n".join(
-            [line + "\n" if line and line[0].isupper() else line for line in poem.split("\n")]
+            [
+                line + "\n" 
+                if line and line[0].isupper() 
+                else line for line in poem.split("\n")
+            ]
         )
 
         new_poems.append(poem)
@@ -321,8 +386,12 @@ def shorten_poems(
     """
     Shortens poems to a maximum number of lines and words per line.
     """
-    max_lines_per_poem = float('inf') if max_lines_per_poem == 0 else max_lines_per_poem
-    max_words_per_line = float('inf') if max_words_per_line == 0 else max_words_per_line
+    max_lines_per_poem = (
+        float('inf') if max_lines_per_poem == 0 else max_lines_per_poem
+    )
+    max_words_per_line = (
+        float('inf') if max_words_per_line == 0 else max_words_per_line
+    )
     new_poems = []
     for poem in poems:
         lines = poem.split("\n")
@@ -342,12 +411,19 @@ def shorten_poems(
     return new_poems
 
 
-def generate_poems(csv, column, amount_of_poems, number_of_lines, number_of_words, category):
+def generate_poems(
+        csv, 
+        column, 
+        amount_of_poems, 
+        number_of_lines,
+        number_of_words, 
+        category
+):
     data = read_and_parse_text(csv, column, category)
     data = preprocess_text(data)
     data = sentences_from_poems(data)
     
-    poems = [] # initialize poems variable
+    poems = [] 
 
     poems = generate_sentences(data, amount_of_poems)
     
@@ -371,7 +447,9 @@ def save_generated_text(text):
         file = input("Enter file name: ")
 
         while os.path.exists(file):
-            print("File already exists. Are you sure you want to overwrite it?")
+            print(
+                "File already exists. Are you sure you want to overwrite it?"
+            )
             overwrite = input("Enter choice (y/n): ")
             if overwrite == "y":
                 break
@@ -446,7 +524,14 @@ def generate_poems_for_default_data(data, column):
     category = input("Enter choice: ")
     category = common_tags[ category if category in common_tags else "8"]
 
-    poems = generate_poems(data, column, number_of_poems, number_of_lines, number_of_words, category)
+    poems = generate_poems(
+        data, 
+        column, 
+        number_of_poems,
+        number_of_lines, 
+        number_of_words, 
+        category
+    )
     save_poems = input("Save poems to file? (y/n): ")
 
     if save_poems == "y":
@@ -456,8 +541,10 @@ def generate_poems_for_default_data(data, column):
 
 
 def generate_sentences_for_non_default_data(folder):
-    number_of_sentences = get_integer_from_user("Number of sentences to generate: ")
-    
+    number_of_sentences = (
+        get_integer_from_user("Number of sentences to generate: ")
+    )
+
     sentences = []
     for filename in os.listdir(folder):
         with open(os.path.join(folder, filename), 'r') as file:
