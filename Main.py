@@ -39,7 +39,7 @@ def main():
             print("File not found. Try again.")
 
     
-def read_and_parse_text(file: str, column=None, category=None) -> pd.DataFrame:
+def read_and_parse_text(file: str, column=None, category="Time") -> pd.DataFrame:
     """
     Reads and parses text from a CSV file.
 
@@ -92,7 +92,6 @@ def word_states(sentences: list) -> dict:
             states[previous_word] = {}
 
     return states
-
 
 #consider breaking up into smaller functions
 def generate_sentences(sentences : list , num_sentences : int):
@@ -305,6 +304,11 @@ def process_output_poems(
             [line for line in poem.split("\n") if len(line.split()) < 10]
         )
         
+        #New line when capitalized word is found
+        poem = "\n".join(
+            [line + "\n" if line and line[0].isupper() else line for line in poem.split("\n")]
+        )
+
         new_poems.append(poem)
     
     new_poems = shorten_poems(
@@ -320,6 +324,8 @@ def shorten_poems(
     """
     Shortens poems to a maximum number of lines and words per line.
     """
+    max_lines_per_poem = float('inf') if max_lines_per_poem == 0 else max_lines_per_poem
+    max_words_per_line = float('inf') if max_words_per_line == 0 else max_words_per_line
     new_poems = []
     for poem in poems:
         lines = poem.split("\n")
@@ -339,12 +345,12 @@ def shorten_poems(
     return new_poems
 
 
-def generate_poems(csv, column, amount_of_poems):
-    data = read_and_parse_text(csv, column)
+def generate_poems(csv, column, amount_of_poems, number_of_lines, number_of_words, category):
+    data = read_and_parse_text(csv, column, category)
     data = preprocess_text(data)
     data = sentences_from_poems(data)
     poems = generate_sentences(data, amount_of_poems)
-    poems = process_output_poems(poems, 10, 10)
+    poems = process_output_poems(poems, number_of_lines, number_of_words)
 
     for poem in poems:
         print("##############################################################")
@@ -398,8 +404,33 @@ def display_menu_for_non_default_data():
 
 def generate_poems_for_default_data(data, column):
     number_of_poems = int( input("Number of poems to generate: ") )
-    poems = generate_poems(data, column, number_of_poems)
+    number_of_lines = int( input("Max number of lines per poem (0 for no max): ") )
+    number_of_words = int( input("Max number of words per line (0 for no max): ") )
+
+    common_tags = { 
+        "1": "Time", 
+        "2": "Love", 
+        "3": "Nature", 
+        "4": "Social Commentaries", 
+        "5": "Mythology & Folklore", 
+        "6": "Arts & Sciences", 
+        "7": "Living", 
+        "8": None
+    }
+
+    print("Is there a specific category you want to generate poems from: ")
+    for key, value in common_tags.items():
+        if value is not None:
+            print(f"Press {key} for {value} poems")
+        else:
+            print(f"Press {key} for poems for all/no specific categories")
+
+    category = input("Enter choice: ")
+    category = common_tags[ category if category in common_tags else "8"]
+
+    poems = generate_poems(data, column, number_of_poems, number_of_lines, number_of_words, category)
     save_poems = input("Save poems to file? (y/n): ")
+
     if save_poems == "y":
         save_generated_text(poems)
     elif save_poems == "n":
