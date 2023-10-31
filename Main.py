@@ -7,20 +7,17 @@ DEFAULT_DATA = "PoetryFoundationData.csv"
 DEFAULT_COLUMN = "Poem"
 
 def main():
-    data = DEFAULT_DATA
-    column = DEFAULT_COLUMN
-    debug=True
-    if debug:
-        pass
-
-    keep_running = True
+    data         : str  = DEFAULT_DATA
+    column       : str  = DEFAULT_COLUMN
+    keep_running : bool = True
+    
     while keep_running:
         print("\n--- Poem Generator ---")
         print("Current training data source: " + data + "\n")
 
         try:
             if data == DEFAULT_DATA:
-                user_input = display_menu_for_default_data()
+                user_input : int = display_menu_choice_for_default_data()
                 if user_input == "1":
                     generate_poems_for_default_data(data, column)
                 elif user_input == "2":
@@ -28,13 +25,13 @@ def main():
                 elif user_input == "0":
                     keep_running = False
             else:
-                user_input = display_menu_for_non_default_data()
+                user_input : int = display_menu_for_non_default_data()
                 if user_input == "1":
                     generate_sentences_for_non_default_data(data)
                 elif user_input == "2":
                     data = change_training_data_source()
                 elif user_input == "0":
-                    keep_running = False
+                    keep_running = False    
         except FileNotFoundError:
             print("File not found. Try again.")
 
@@ -93,7 +90,7 @@ def word_states(sentences: list) -> dict:
 
     return states
 
-#consider breaking up into smaller functions
+
 def generate_sentences(sentences : list , num_sentences : int):
     states = {"#": WordState()}
     for sentence in sentences:
@@ -354,7 +351,6 @@ def generate_poems(csv, column, amount_of_poems, number_of_lines, number_of_word
 
     poems = generate_sentences(data, amount_of_poems)
     
-    #replace empty poems with new ones
     for i in range(len(poems)):
         if poems[i] == "":
             while poems[i] == "":
@@ -394,7 +390,7 @@ def save_generated_text(text):
         print("Error saving text to file. (check file name/format)")
         
 
-def display_menu_for_default_data():
+def display_menu_choice_for_default_data():
     print(
         f"Press 1 to generate poem(s) \n"
         "Press 2 to change training data source.\n"
@@ -404,6 +400,7 @@ def display_menu_for_default_data():
 
 
 def display_menu_for_non_default_data():
+
     print(
         f"Press 1 to generate sentences \n"
         "Press 2 to change training data source.\n"
@@ -412,10 +409,21 @@ def display_menu_for_non_default_data():
     return input("Enter choice: ")
 
 
+def get_integer_from_user(input_text):
+    while True:
+        try:
+            number = int(input(input_text))
+            break
+        except ValueError:
+            print("Invalid input. Please enter a valid integer.")
+    return number
+
+
 def generate_poems_for_default_data(data, column):
-    number_of_poems = int( input("Number of poems to generate: ") )
-    number_of_lines = int( input("Max number of lines per poem (0 for no max): ") )
-    number_of_words = int( input("Max number of words per line (0 for no max): ") )
+
+    number_of_poems = get_integer_from_user("Number of poems to generate: ")
+    number_of_lines = get_integer_from_user("Number of lines per poem: ")
+    number_of_words = get_integer_from_user("Number of words per line: ")
 
     common_tags = { 
         "1": "Time", 
@@ -448,8 +456,8 @@ def generate_poems_for_default_data(data, column):
 
 
 def generate_sentences_for_non_default_data(folder):
-    number_of_sentences = int(input("Number of sentences to generate: "))
-
+    number_of_sentences = get_integer_from_user("Number of sentences to generate: ")
+    
     sentences = []
     for filename in os.listdir(folder):
         with open(os.path.join(folder, filename), 'r') as file:
