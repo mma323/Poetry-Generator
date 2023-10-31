@@ -2,9 +2,55 @@ import random as rand
 import pandas as pd
 from WordState import WordState
 import os
-    
 
-def read_and_parse_text(file: str, column = None) -> str:
+DEFAULT_DATA = "PoetryFoundationData.csv"
+DEFAULT_COLUMN = "Poem"
+
+def main():
+    data = DEFAULT_DATA
+    column = DEFAULT_COLUMN
+    debug=True
+    if debug:
+        pass
+
+    keep_running = True
+    while keep_running:
+        print("\n--- Poem Generator ---")
+        print("Current training data source: " + data + "\n")
+
+        try:
+            if data == DEFAULT_DATA:
+                user_input = display_menu_for_default_data()
+                if user_input == "1":
+                    generate_poems_for_default_data(data, column)
+                elif user_input == "2":
+                    data = change_training_data_source()
+                elif user_input == "0":
+                    keep_running = False
+            else:
+                user_input = display_menu_for_non_default_data()
+                if user_input == "1":
+                    generate_sentences_for_non_default_data(data)
+                elif user_input == "2":
+                    data = change_training_data_source()
+                elif user_input == "0":
+                    keep_running = False
+        except FileNotFoundError:
+            print("File not found. Try again.")
+
+    
+def read_and_parse_text(file: str, column=None, category=None) -> pd.DataFrame:
+    """
+    Reads and parses text from a CSV file.
+
+    Args:
+    file (str): The path to the CSV file.
+    column (str): The name of the column to read from. If None, reads from the first column.
+    category (str): The category to filter by. If None, returns all rows.
+
+    Returns:
+    pd.DataFrame: The parsed text.
+    """
 
     if column is None:
         text = pd.read_csv(file, header=None)
@@ -12,9 +58,11 @@ def read_and_parse_text(file: str, column = None) -> str:
         return text
     else:
         text = pd.read_csv(file)
-        text = text[column]
-
-    return text
+        if category is not None:
+            text = text[text['Tags'].str.contains(category, na=False)][column]
+        else:
+            text = text[column]
+        return text
    
 
 def word_states(sentences: list) -> dict:
@@ -232,17 +280,30 @@ def sentences_from_poems(poems : pd.DataFrame) -> list:
     return sentences
 
 
-def process_output_poems(poems : list) -> list:
+def process_output_poems(poems : list,) -> list:
     new_poems = []
+    characters_ending_line = [".", ",", "?", "!", ";", ":"]
+    characters_to_be_removed = ["-", "_", "—", "–", "(", ")", '"', "“", "”"]
+
     for poem in poems:
-        poem = poem.replace(".", ".\n")
-        poem = poem.replace(",", ",\n")
-        poem = poem.replace("?", "?\n")
-        poem = poem.replace("!", "!\n")
-        #new line for words starting with capital letter
-        poem = poem.replace(" ", "\n", 1)
+        for character in characters_ending_line:
+            poem = poem.replace(character, character + " \n")
+
+        for character in characters_to_be_removed:
+            poem = poem.replace(character, "")
+        
+        #remove whitespace in the beginning of each line
+        poem = "\n".join(
+            [line.lstrip() for line in poem.split("\n")]
+        )
+
+        #remove lines containing more than 10 words
+        poem = "\n".join(
+            [line for line in poem.split("\n") if len(line.split()) < 10]
+        )
+        
         new_poems.append(poem)
-    
+        
     return new_poems
 
 
@@ -262,55 +323,28 @@ def generate_poems(csv, column, amount_of_poems):
 
 
 def save_generated_text(text):
-    file = input("Enter file name: ")
+    try:
+        file = input("Enter file name: ")
 
-    while os.path.exists(file):
-        print("File already exists. Are you sure you want to overwrite it?")
-        overwrite = input("Enter choice (y/n): ")
-        if overwrite == "y":
-            break
-        elif overwrite == "n":
-            file = input("Enter new file name: ")
-        else:
-            print("Invalid input. Try again.")
+        while os.path.exists(file):
+            print("File already exists. Are you sure you want to overwrite it?")
             overwrite = input("Enter choice (y/n): ")
+            if overwrite == "y":
+                break
+            elif overwrite == "n":
+                file = input("Enter new file name: ")
+            else:
+                print("Invalid input. Try again.")
+                overwrite = input("Enter choice (y/n): ")
+            
+        print("Saving generated text to file: " + file)
+        with open(file, "w", encoding="utf8") as file:
+            for line in text:
+                file.write(line + "\n")
+        print("Text saved to file: " + file + "\n")
+    except:
+        print("Error saving text to file. (check file name/format)")
         
-    print("Saving generated text to file: " + file)
-    with open(file, "w", encoding="utf8") as file:
-        for line in text:
-            file.write(line + "\n")
-    print("Text saved to file: " + file + "\n")
-    
-
-def main():
-    DEFAULT_DATA = "PoetryFoundationData.csv"
-    DEFAULT_COLUMN = "Poem"
-
-    data = DEFAULT_DATA
-    column = DEFAULT_COLUMN
-
-    keep_running = True
-    while keep_running:
-        print("--- Poem Generator ---")
-        print("Current training data source: " + data + "\n")
-
-        if data == DEFAULT_DATA:
-            user_input = display_menu_for_default_data()
-            if user_input == "1":
-                generate_poems_for_default_data(data, column)
-            elif user_input == "2":
-                data = change_training_data_source()
-            elif user_input == "0":
-                keep_running = False
-        else:
-            user_input = display_menu_for_non_default_data()
-            if user_input == "1":
-                generate_sentences_for_non_default_data(data)
-            elif user_input == "2":
-                data = change_training_data_source()
-            elif user_input == "0":
-                keep_running = False
-
 
 def display_menu_for_default_data():
     print(
@@ -335,10 +369,7 @@ def generate_poems_for_default_data(data, column):
     poems = generate_poems(data, column, number_of_poems)
     save_poems = input("Save poems to file? (y/n): ")
     if save_poems == "y":
-        try:
-            save_generated_text(poems)
-        except:
-            print("Error saving poems to file. (check file name/format)")
+        save_generated_text(poems)
     elif save_poems == "n":
         pass
 
@@ -352,14 +383,23 @@ def generate_sentences_for_non_default_data(folder):
             for line in file:
                 sentences.append(line.strip())
     
+    sentences = preprocess_text(sentences)
     generated_sentences = generate_sentences(sentences, number_of_sentences)
 
     for sentence in generated_sentences:
         print(sentence)
 
+    save_sentences = input("Save poems to file? (y/n): ")
+    if save_sentences == "y":
+        save_generated_text(generated_sentences)
+    elif save_sentences== "n":
+        pass
+
     
 def change_training_data_source():
-    return input("Enter new training data source: ")
+    print("Blank input will revert to default data source.")
+    data = input("Enter path for folder containing training data source: ")
+    return DEFAULT_DATA if data == "" else data
 
 
 if __name__ == "__main__":
