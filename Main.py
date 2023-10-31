@@ -349,7 +349,17 @@ def generate_poems(csv, column, amount_of_poems, number_of_lines, number_of_word
     data = read_and_parse_text(csv, column, category)
     data = preprocess_text(data)
     data = sentences_from_poems(data)
+    
+    poems = [] # initialize poems variable
+
     poems = generate_sentences(data, amount_of_poems)
+    
+    #replace empty poems with new ones
+    for i in range(len(poems)):
+        if poems[i] == "":
+            while poems[i] == "":
+                poems[i] = generate_sentences(data, 1)[0]
+
     poems = process_output_poems(poems, number_of_lines, number_of_words)
 
     for poem in poems:
