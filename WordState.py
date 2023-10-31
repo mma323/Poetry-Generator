@@ -30,6 +30,9 @@ class WordState:
     def get_next(self):
         """Returns a random next word based on probability."""
 
-        return rand.choices(list(self._next_words.keys()), weights=list(self._next_words.values()))[0]
+        return rand.choices(
+            list( self._next_words.keys() ), 
+            weights=list( self._next_words.values() )
+        )[0]
 
             
