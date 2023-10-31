@@ -280,7 +280,10 @@ def sentences_from_poems(poems : pd.DataFrame) -> list:
     return sentences
 
 
-def process_output_poems(poems : list,) -> list:
+def process_output_poems(
+        poems : list, max_lines_per_poem, max_words_per_line
+) -> list:
+    
     new_poems = []
     characters_ending_line = [".", ",", "?", "!", ";", ":"]
     characters_to_be_removed = ["-", "_", "—", "–", "(", ")", '"', "“", "”"]
@@ -303,7 +306,36 @@ def process_output_poems(poems : list,) -> list:
         )
         
         new_poems.append(poem)
+    
+    new_poems = shorten_poems(
+        new_poems, max_lines_per_poem, max_words_per_line
+    )
+    
+    return new_poems
+
+
+def shorten_poems(
+        poems : list, max_lines_per_poem : int, max_words_per_line : int
+) -> list:
+    """
+    Shortens poems to a maximum number of lines and words per line.
+    """
+    new_poems = []
+    for poem in poems:
+        lines = poem.split("\n")
+        if len(lines) > max_lines_per_poem:
+            lines = lines[:max_lines_per_poem]
         
+        new_lines = []
+        for line in lines:
+            words = line.split()
+            if len(words) > max_words_per_line:
+                words = words[:max_words_per_line]
+            
+            new_lines.append(" ".join(words))
+        
+        new_poems.append("\n".join(new_lines))
+    
     return new_poems
 
 
@@ -312,7 +344,7 @@ def generate_poems(csv, column, amount_of_poems):
     data = preprocess_text(data)
     data = sentences_from_poems(data)
     poems = generate_sentences(data, amount_of_poems)
-    poems = process_output_poems(poems)
+    poems = process_output_poems(poems, 10, 10)
 
     for poem in poems:
         print("##############################################################")
