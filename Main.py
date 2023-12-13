@@ -12,6 +12,7 @@ from WordState import WordState
 DEFAULT_DATA = "PoetryFoundationData.csv"
 DEFAULT_COLUMN = "Poem"
 
+
 def main():
     data         : str  = DEFAULT_DATA
     column       : str  = DEFAULT_COLUMN
@@ -80,20 +81,20 @@ def word_states(sentences: list) -> dict:
 
     """
 
-    states = {}
+    states : dict = {}
 
     for sentence in sentences:
-        words = sentence.split()
+        words : list = sentence.split()
 
-        start_of_sentence = "#"
-        previous_word = start_of_sentence
+        START_OF_SENTENCE = "#"
+        previous_word : str = START_OF_SENTENCE
 
         for word in words:
                 if previous_word not in states:
-                    states[previous_word] = {}
+                    states[previous_word] : dict = {}
 
                 if word not in states[previous_word]:
-                    states[previous_word][word] = 1
+                    states[previous_word][word] : int = 1
                 else:
                     states[previous_word][word] += 1
 
@@ -117,10 +118,11 @@ def generate_sentences(sentences : list , num_sentences : int):
     Returns:
     list: A list of generated sentences based on the training data.
     """
-    states = {"#": WordState()}
+    states : dict = {"#": WordState()}
     for sentence in sentences:
-        words = sentence.split()
-        previous_word = "#"
+        words : list = sentence.split()
+        START_OF_SENTENCE = "#"
+        previous_word = START_OF_SENTENCE
         for word in words:
             if previous_word not in states:
                 states[previous_word] = WordState()
@@ -146,17 +148,17 @@ def generate_sentences(sentences : list , num_sentences : int):
     return sentences
 
 
-def lower_case(text):
+def lower_case(text : pd.DataFrame):
     return text.str.lower()
 
 
-def remove_punctuations(text):
+def remove_punctuations(text : pd.DataFrame):
     return text.apply(
         lambda x: x.translate(str.maketrans('', '', string.punctuation))
     )
 
 
-def remove_stopwords(text):
+def remove_stopwords(text : pd.DataFrame):
     nltk.download('stopwords')
     STOPWORDS = set(stopwords.words('english'))
     return text.apply(
@@ -166,7 +168,7 @@ def remove_stopwords(text):
     )
 
 
-def remove_frequent_words(text, frequent_words_to_remove):
+def remove_frequent_words(text : pd.DataFrame, frequent_words_to_remove : int):
     counter = Counter()
     for value in text.values:
         for word in value.split():
@@ -186,7 +188,7 @@ def remove_frequent_words(text, frequent_words_to_remove):
     )
 
 
-def remove_rare_words(text, rare_words_to_remove):
+def remove_rare_words(text : pd.DataFrame, rare_words_to_remove : int):
     counter = Counter()
     for value in text.values:
         for word in value.split():
@@ -206,7 +208,7 @@ def remove_rare_words(text, rare_words_to_remove):
     )
 
 
-def remove_emojis(text):
+def remove_emojis(text : pd.DataFrame):
     emoji_pattern = re.compile("["
                     u"\U0001F600-\U0001F64F"  # emoticons
                     u"\U0001F300-\U0001F5FF"  # symbols & pictographs
@@ -219,7 +221,7 @@ def remove_emojis(text):
     return text.apply(lambda x: emoji_pattern.sub(r'', x))
 
 
-def remove_emoticons(text):
+def remove_emoticons(text : pd.DataFrame):
     EMOTICONS = {
         u":‑\)":"Happy face or smiley",
         u":\)":"Happy face or smiley",
@@ -247,7 +249,7 @@ def remove_emoticons(text):
     return text.apply(lambda x: emoticon_pattern.sub(r'', x))
 
 
-def convert_emoticons_to_words(text):
+def convert_emoticons_to_words(text : pd.DataFrame):
     EMOTICONS = {
         u":‑\)":"Happy face or smiley",
         u":\)":"Happy face or smiley",
@@ -278,7 +280,7 @@ def convert_emoticons_to_words(text):
     return text
 
 
-def remove_urls(text):
+def remove_urls(text : pd.DataFrame):
     url_pattern = re.compile(r'https?://\S+|www\.\S+')
     return text.apply(lambda x: url_pattern.sub(r'', x))
 
@@ -295,6 +297,22 @@ def preprocess_text(
         convert_emoticons_to_words : bool = False,
         remove_urls                : bool = False
 ):
+    """
+    Preprocesses text by applying a series of transformations.
+    Arguments:
+    data (pd.DataFrame): The text to preprocess.
+    lower_casing (bool): Whether to convert all text to lowercase.
+    remove_punctuations (bool): Whether to remove all punctuations.
+    remove_stopwords (bool): Whether to remove all stopwords.
+    frequent_words_to_remove (int): Number of most frequent words to remove.
+    rare_words_to_remove (int): The number of most rare words to remove.
+    remove_emojis (bool): Whether to remove all emojis.
+    remove_emoticons (bool): Whether to remove all emoticons.
+    convert_emoticons_to_words (bool): Whether to convert emoticons to words.
+    remove_urls (bool): Whether to remove all URLs.
+    Returns:
+    pd.DataFrame: The preprocessed text.
+    """
     text = data.copy()
 
     if lower_casing:
@@ -329,7 +347,11 @@ def preprocess_text(
 
 def sentences_from_poems(poems : pd.DataFrame) -> list:
     """
-    Returns a list of sentences from the poems.
+    Splits poems into sentences.
+    Arguments:
+    poems (pd.DataFrame): A dataframe of poems.
+    Returns:
+    list: A list containing all the sentences from the poems.
     """
     sentences = []
 
@@ -343,8 +365,22 @@ def sentences_from_poems(poems : pd.DataFrame) -> list:
 
 
 def process_output_poems(
-        poems : list, max_lines_per_poem, max_words_per_line
+        poems : list, max_lines_per_poem : int, max_words_per_line : int
 ) -> list:
+    
+    """
+    Processes output poems by adding new lines, removing unwanted characters,
+    and shortening poems to a maximum number of lines and words per line.
+
+    Arguments:
+
+    poems (list): A list of poems.
+    max_lines_per_poem (int): The maximum number of lines per poem.
+    max_words_per_line (int): The maximum number of words per line.
+
+    Returns:
+    list: A list of processed poems ready for display.
+    """
     
     new_poems = []
     characters_ending_line = [".", ",", "?", "!", ";", ":"]
@@ -382,9 +418,15 @@ def process_output_poems(
 
 def shorten_poems(
         poems : list, max_lines_per_poem : int, max_words_per_line : int
-) -> list:
+    ) -> list:
     """
     Shortens poems to a maximum number of lines and words per line.
+    Arguments:
+    poems (list): A list of poems.
+    max_lines_per_poem (int): The maximum number of lines per poem.
+    max_words_per_line (int): The maximum number of words per line.
+    Returns:
+    list: A list of shortened poems.
     """
     max_lines_per_poem = (
         float('inf') if max_lines_per_poem == 0 else max_lines_per_poem
@@ -412,13 +454,27 @@ def shorten_poems(
 
 
 def generate_poems(
-        csv, 
-        column, 
-        amount_of_poems, 
-        number_of_lines,
-        number_of_words, 
-        category
+        csv             : str, 
+        column          : str, 
+        amount_of_poems : int, 
+        number_of_lines : int,
+        number_of_words : int, 
+        category        : str 
 ):
+    """
+    Prints generated poems.
+
+    Arguments:
+    csv (string): The path to the CSV/text file.
+    column (string): The name of the column to read from.
+    amount_of_poems (int): The number of poems to generate.
+    number_of_lines (int): The number of lines per poem.
+    number_of_words (int): The number of words per line.
+    category (string): The category to filter by. If None, returns all rows.
+
+    Returns:
+    list: A list of generated poems.
+    """
     data = read_and_parse_text(csv, column, category)
     data = preprocess_text(data)
     data = sentences_from_poems(data)
@@ -442,7 +498,10 @@ def generate_poems(
     return poems
 
 
-def save_generated_text(text):
+def save_generated_text(text : list):
+    """
+    Saves generated text to a file specified by the user.
+    """
     try:
         file = input("Enter file name: ")
 
@@ -478,7 +537,6 @@ def display_menu_choice_for_default_data():
 
 
 def display_menu_for_non_default_data():
-
     print(
         f"Press 1 to generate sentences \n"
         "Press 2 to change training data source.\n"
@@ -487,7 +545,17 @@ def display_menu_for_non_default_data():
     return input("Enter choice: ")
 
 
-def get_integer_from_user(input_text):
+def get_integer_from_user(input_text : str):
+    """
+    Provides exception handling whengetting an integer from the user.
+
+    Arguments:
+    input_text (string): The text to display when asking for input.
+
+    Returns:
+    int: The integer input from the user.
+    """
+
     while True:
         try:
             number = int(input(input_text))
@@ -497,13 +565,23 @@ def get_integer_from_user(input_text):
     return number
 
 
-def generate_poems_for_default_data(data, column):
+def generate_poems_for_default_data(data : str, column : str):
+
+    """
+    Generates poems when the default data source is used.
+    Specialized function for generating poems 
+
+    Arguments:
+    data (string): The path to the CSV/text file.
+    column (string): The name of the column to read from.
+
+    """
 
     number_of_poems = get_integer_from_user("Number of poems to generate: ")
     number_of_lines = get_integer_from_user("Number of lines per poem: ")
     number_of_words = get_integer_from_user("Number of words per line: ")
 
-    common_tags = { 
+    common_tags : dict = { 
         "1": "Time", 
         "2": "Love", 
         "3": "Nature", 
@@ -540,7 +618,17 @@ def generate_poems_for_default_data(data, column):
         pass
 
 
-def generate_sentences_for_non_default_data(folder):
+def generate_sentences_for_non_default_data(folder : str):
+
+    """
+    Generates sentences when a non-default data source is used.
+    Generalized function for generating sentences based on
+    folder containing text files provided by the user.
+
+    Arguments:
+    folder (string): The path to the folder containing the text files.
+
+    """
     number_of_sentences = (
         get_integer_from_user("Number of sentences to generate: ")
     )
@@ -565,6 +653,12 @@ def generate_sentences_for_non_default_data(folder):
 
     
 def change_training_data_source():
+    """
+    Changes the training data source.
+    Returns:
+    string: The path to the new training data source.
+    """
+    
     print("Blank input will revert to default data source.")
     data = input("Enter path for folder containing training data source: ")
     return DEFAULT_DATA if data == "" else data
